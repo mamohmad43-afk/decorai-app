@@ -7,24 +7,27 @@ export async function POST(request: Request) {
 
     const apiKey = process.env.HUGGINGFACE_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({ success: false, error: "المفتاح السري غير موجود في إعدادات Vercel" }, { status: 500 });
+      return NextResponse.json({ success: false, error: "المفتاح السري غير موجود" }, { status: 500 });
     }
 
     const response = await fetch(
-      "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0",
+      "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell",
       {
         method: "POST",
         headers: {
           Authorization: `Bearer ${apiKey}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ inputs: `Interior design, ${stylePrompt}, photorealistic, 8k` }),
+        body: JSON.stringify({ 
+          inputs: `Interior design of a room, ${stylePrompt}, highly detailed, photorealistic, 4k`,
+          options: { wait_for_model: true }
+        }),
       }
     );
 
     if (!response.ok) {
       const errText = await response.text();
-      return NextResponse.json({ success: false, error: `خطأ من الذكاء الاصطناعي: ${errText}` }, { status: 500 });
+      return NextResponse.json({ success: false, error: `خطأ من الخادم: ${errText}` }, { status: 500 });
     }
 
     const imageBuffer = await response.arrayBuffer();
