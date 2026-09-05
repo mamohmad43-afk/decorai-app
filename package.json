@@ -10,6 +10,7 @@
       "@dhiwise/component-tagger",
       "@tailwindcss/typography",
       "recharts"
+      "@huggingface/inference": "^2.8.0"
     ],
     "devDependencies": [
       "typescript",
