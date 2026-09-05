@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { HfInference } from '@huggingface/inference';
 
 export async function POST(request: Request) {
   try {
@@ -7,38 +8,19 @@ export async function POST(request: Request) {
 
     const apiKey = process.env.HUGGINGFACE_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({ success: false, error: "المفتاح غير موجود في إعدادات Vercel" }, { status: 500 });
+      return NextResponse.json({ success: false, error: "المفتاح السري غير موجود في Vercel" }, { status: 500 });
     }
 
-    // استدعاء مباشر للنموذج مع ضمان استقبال النتيجة كصورة
-    const apiResponse = await fetch(
-      "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          inputs: stylePrompt || "Modern interior design living room",
-          options: { wait_for_model: true }
-        }),
-      }
-    );
+    const hf = new HfInference(apiKey);
 
-    if (!apiResponse.ok) {
-      const errorText = await apiResponse.text();
-      return NextResponse.json({ success: false, error: `خطأ من هักينغ فايس: ${errorText}` }, { status: 500 });
-    }
+    const response = await hf.textToImage({
+      model: 'black-forest-labs/FLUX.1-schnell',
+      inputs: `Interior design, ${stylePrompt || "modern living room"}, photorealistic, 4k`,
+      parameters: { num_inference_steps: 4 }
+    });
 
-    const buffer = await apiResponse.arrayBuffer();
-    const base64Image = Buffer.from(buffer).toString("base64");
-    
-    // التأكد من أن الناتج صورة وليس رسالة خطأ بنص JSON
-    if (base64Image.length < 100) {
-      return NextResponse.json({ success: false, error: "الرد ليس صورة صالحة، يرجى المحاولة لاحقاً" }, { status: 500 });
-    }
-
+    const buffer = Buffer.from(await response.arrayBuffer());
+    const base64Image = buffer.toString("base64");
     const imageUrl = `data:image/jpeg;base64,${base64Image}`;
 
     return NextResponse.json({
@@ -46,7 +28,7 @@ export async function POST(request: Request) {
       images: [{ url: imageUrl }]
     });
 
-  } catch (err: any) {
-    return NextResponse.json({ success: false, error: `خطأ اتصال: ${err.message}` }, { status: 500 });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message || "حدث خطأ غير متوقع" }, { status: 500 });
   }
 }
