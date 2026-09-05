@@ -7,10 +7,11 @@ export async function POST(request: Request) {
 
     const apiKey = process.env.HUGGINGFACE_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({ success: false, error: "المفتاح غير موجود" }, { status: 500 });
+      return NextResponse.json({ success: false, error: "المفتاح غير موجود في إعدادات Vercel" }, { status: 500 });
     }
 
-    const response = await fetch(
+    // استدعاء مباشر للنموذج مع ضمان استقبال النتيجة كصورة
+    const apiResponse = await fetch(
       "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell",
       {
         method: "POST",
@@ -18,20 +19,26 @@ export async function POST(request: Request) {
           Authorization: `Bearer ${apiKey}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ 
-          inputs: `Interior design of a room, ${stylePrompt}, photorealistic, 4k`,
+        body: JSON.stringify({
+          inputs: stylePrompt || "Modern interior design living room",
           options: { wait_for_model: true }
         }),
       }
     );
 
-    if (!response.ok) {
-      const errText = await response.text();
-      return NextResponse.json({ success: false, error: errText }, { status: 500 });
+    if (!apiResponse.ok) {
+      const errorText = await apiResponse.text();
+      return NextResponse.json({ success: false, error: `خطأ من هักينغ فايس: ${errorText}` }, { status: 500 });
     }
 
-    const imageBuffer = await response.arrayBuffer();
-    const base64Image = Buffer.from(imageBuffer).toString("base64");
+    const buffer = await apiResponse.arrayBuffer();
+    const base64Image = Buffer.from(buffer).toString("base64");
+    
+    // التأكد من أن الناتج صورة وليس رسالة خطأ بنص JSON
+    if (base64Image.length < 100) {
+      return NextResponse.json({ success: false, error: "الرد ليس صورة صالحة، يرجى المحاولة لاحقاً" }, { status: 500 });
+    }
+
     const imageUrl = `data:image/jpeg;base64,${base64Image}`;
 
     return NextResponse.json({
@@ -39,7 +46,7 @@ export async function POST(request: Request) {
       images: [{ url: imageUrl }]
     });
 
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  } catch (err: any) {
+    return NextResponse.json({ success: false, error: `خطأ اتصال: ${err.message}` }, { status: 500 });
   }
 }
