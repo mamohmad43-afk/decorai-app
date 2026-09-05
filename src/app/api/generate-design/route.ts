@@ -7,7 +7,7 @@ export async function POST(request: Request) {
 
     const apiKey = process.env.HUGGINGFACE_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({ success: false, error: "المفتاح السري غير موجود" }, { status: 500 });
+      return NextResponse.json({ success: false, error: "المفتاح غير موجود" }, { status: 500 });
     }
 
     const response = await fetch(
@@ -19,7 +19,7 @@ export async function POST(request: Request) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ 
-          inputs: `Interior design of a room, ${stylePrompt}, highly detailed, photorealistic, 4k`,
+          inputs: `Interior design of a room, ${stylePrompt}, photorealistic, 4k`,
           options: { wait_for_model: true }
         }),
       }
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
 
     if (!response.ok) {
       const errText = await response.text();
-      return NextResponse.json({ success: false, error: `خطأ من الخادم: ${errText}` }, { status: 500 });
+      return NextResponse.json({ success: false, error: errText }, { status: 500 });
     }
 
     const imageBuffer = await response.arrayBuffer();
@@ -40,6 +40,6 @@ export async function POST(request: Request) {
     });
 
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message || "حدث خطأ ما" }, { status: 500 });
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
