@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { HfInference } from '@huggingface/inference';
 
 export async function POST(request: Request) {
   try {
@@ -11,15 +10,28 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "المفتاح السري غير موجود في Vercel" }, { status: 500 });
     }
 
-    const hf = new HfInference(apiKey);
+    const response = await fetch(
+      "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell",
+      {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+        body: JSON.stringify({
+          inputs: `Interior design, ${stylePrompt || "modern living room"}, photorealistic, 4k`,
+          parameters: { num_inference_steps: 4 }
+        }),
+      }
+    );
 
-    const response = await hf.textToImage({
-      model: 'black-forest-labs/FLUX.1-schnell',
-      inputs: `Interior design, ${stylePrompt || "modern living room"}, photorealistic, 4k`,
-      parameters: { num_inference_steps: 4 }
-    });
+    if (!response.ok) {
+      const errText = await response.text();
+      return NextResponse.json({ success: false, error: `Hugging Face Error: ${errText}` }, { status: 500 });
+    }
 
-    const buffer = Buffer.from(await response.arrayBuffer());
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
     const base64Image = buffer.toString("base64");
     const imageUrl = `data:image/jpeg;base64,${base64Image}`;
 
